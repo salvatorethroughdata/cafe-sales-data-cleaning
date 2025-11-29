@@ -1,0 +1,337 @@
+let
+    Source = Csv.Document(File.Contents(
+        "C:\Users\Salvatore\Desktop\Projects\Data cleaning project 1\raw_data\dirty_cafe_sales.csv"),
+        [Delimiter=",", Columns=8, Encoding=1252, QuoteStyle=QuoteStyle.None]
+    ),
+    
+    #"Changed Type" = Table.TransformColumnTypes(
+        Source,{
+            {"Column1", type text},
+            {"Column2", type text},
+            {"Column3", type text},
+            {"Column4", type text},
+            {"Column5", type text},
+            {"Column6", type text},
+            {"Column7", type text},
+            {"Column8", type text}
+        }
+    ),
+
+    #"Promoted Headers" = Table.PromoteHeaders(
+        #"Changed Type", [PromoteAllScalars=true]
+    ),
+
+    #"Removed Duplicates" = Table.Distinct(
+        #"Renamed Columns", {"Transaction ID"}
+    ),
+
+    #"Changed Type1" = Table.TransformColumnTypes(
+        #"Promoted Headers",{
+            {"Transaction ID", type text},
+            {"Item", type text},
+            {"Quantity", type text},
+            {"Price Per Unit", type text},
+            {"Total Spent", type text},
+            {"Payment Method", type text},
+            {"Location", type text},
+            {"Transaction Date", type text}
+        }
+    ),
+
+    #"Trimmed Text" = Table.TransformColumns(
+        #"Changed Type1",{
+            {"Transaction ID", Text.Trim, type text},
+            {"Item", Text.Trim, type text},
+            {"Quantity", Text.Trim, type text},
+            {"Price Per Unit", Text.Trim, type text},
+            {"Total Spent", Text.Trim, type text},
+            {"Payment Method", Text.Trim, type text},
+            {"Location", Text.Trim, type text},
+            {"Transaction Date", Text.Trim, type text}
+        }
+    ),
+
+    #"Cleaned Text" = Table.TransformColumns(
+        #"Trimmed Text",{
+            {"Transaction ID", Text.Clean, type text},
+            {"Item", Text.Clean, type text},
+            {"Quantity", Text.Clean, type text},
+            {"Price Per Unit", Text.Clean, type text},
+            {"Total Spent", Text.Clean, type text},
+            {"Payment Method", Text.Clean, type text},
+            {"Location", Text.Clean, type text},
+            {"Transaction Date", Text.Clean, type text}
+        }
+    ),
+
+    #"Replaced Value" = Table.ReplaceValue(
+        #"Cleaned Text","","BLANK",Replacer.ReplaceValue,{"Item"}
+    ),
+
+    #"Replaced Value1" = Table.ReplaceValue(
+        #"Replaced Value","","BLANK",Replacer.ReplaceValue,{"Quantity"}
+    ),
+
+    #"Replaced Value2" = Table.ReplaceValue(
+        #"Replaced Value1","","BLANK",Replacer.ReplaceValue,{"Price Per Unit"}
+    ),
+
+    #"Replaced Value3" = Table.ReplaceValue(
+        #"Replaced Value2","","BLANK",Replacer.ReplaceValue,{"Total Spent"}
+    ),
+
+    #"Added Custom" = Table.AddColumn(
+        #"Replaced Value3",
+        "Quantity_",
+        each 
+        if 
+            List.Contains({"ERROR","UNKNOWN","BLANK"},[Quantity]) 
+        then 
+                if 
+                    not List.Contains({"ERROR","UNKNOWN","BLANK","0"},[Price Per Unit]) and 
+                    not List.Contains({"ERROR","UNKNOWN","BLANK"},[Total Spent]) 
+                then 
+                    Number.FromText([Total Spent])/Number.FromText([Price Per Unit]) 
+                else 
+                    [Quantity] 
+        else 
+            Number.FromText([Quantity])
+    ),
+
+    #"Reordered Columns" = Table.ReorderColumns(
+        #"Added Custom",{
+            "Transaction ID", 
+            "Item", 
+            "Quantity", 
+            "Quantity_", 
+            "Price Per Unit", 
+            "Total Spent", 
+            "Payment Method", 
+            "Location", 
+            "Transaction Date"
+        }
+    ),
+
+    #"Removed Columns" = Table.RemoveColumns(
+        #"Reordered Columns",{"Quantity"}
+    ),
+
+    #"Added Custom1" = Table.AddColumn(
+        #"Removed Columns", 
+        "Price_per_unit", 
+        each 
+        if 
+            List.Contains({"ERROR","UNKNOWN","BLANK"},[Price Per Unit]) 
+        then 
+            if 
+                not List.Contains({"ERROR","UNKNOWN","BLANK",0},[Quantity_]) and 
+                not List.Contains({"ERROR","UNKNOWN","BLANK"},[Total Spent]) 
+            then 
+                Number.FromText([Total Spent],"en-US")/[Quantity_] 
+            else 
+                [Price Per Unit] 
+        else 
+            Number.FromText([Price Per Unit],"en-US")
+    ),
+
+    #"Reordered Columns1" = Table.ReorderColumns(
+        #"Added Custom1",{
+            "Transaction ID", 
+            "Item", "Quantity_", 
+            "Price Per Unit", 
+            "Price_per_unit", 
+            "Total Spent", 
+            "Payment Method", 
+            "Location", 
+            "Transaction Date"
+        }
+    ),
+
+    #"Removed Columns1" = Table.RemoveColumns(
+        #"Reordered Columns1",{"Price Per Unit"}
+    ),
+
+    #"Added Custom2" = Table.AddColumn(
+        #"Removed Columns1", 
+        "Total_spent", 
+        each 
+        if 
+            not List.Contains({"ERROR","UNKNOWN","BLANK"},[Quantity_]) and 
+            not List.Contains({"ERROR","UNKNOWN","BLANK"},[Price_per_unit]) 
+        then 
+            [Quantity_]*[Price_per_unit] 
+        else 
+            [Total Spent]
+    ),
+
+    #"Reordered Columns2" = Table.ReorderColumns(
+        #"Added Custom2",{
+            "Transaction ID", 
+            "Item", 
+            "Quantity_", 
+            "Price_per_unit", 
+            "Total Spent", 
+            "Total_spent", 
+            "Payment Method", 
+            "Location", 
+            "Transaction Date"
+        }
+    ),
+
+    #"Removed Columns2" = Table.RemoveColumns(
+        #"Reordered Columns2",{"Total Spent"}
+    ),
+
+    #"Replaced Value4" = Table.ReplaceValue(
+        #"Removed Columns2","","BLANK",Replacer.ReplaceValue,{"Payment Method"}
+    ),
+
+    #"Replaced Value5" = Table.ReplaceValue(
+        #"Replaced Value4","","BLANK",Replacer.ReplaceValue,{"Location"}
+    ),
+
+    #"Replaced Value6" = Table.ReplaceValue(
+        #"Replaced Value5","","BLANK",Replacer.ReplaceValue,{"Transaction Date"}
+    ),
+
+    #"Added Custom3" = Table.AddColumn(
+        #"Replaced Value6", 
+        "Flag_transaction_date_inconsistent", 
+        each 
+        if 
+            List.Contains({"ERROR","UNKNOWN","BLANK"},[Transaction Date]) 
+        then 1 
+        else 0
+    ),
+
+    #"Changed Type2" = Table.TransformColumnTypes(
+        #"Added Custom3",{
+            {"Flag_transaction_date_inconsistent", type logical}
+        }
+    ),
+
+    #"Added Custom4" = Table.AddColumn(
+        #"Changed Type2", "Flag_Location_inconsistent", 
+        each 
+        if 
+            [Location] <> "ERROR" 
+        then 0 
+        else 1
+    ),
+
+    #"Reordered Columns3" = Table.ReorderColumns(
+        #"Added Custom4",{
+            "Transaction ID", 
+            "Item", 
+            "Quantity_", 
+            "Price_per_unit", 
+            "Total_spent", 
+            "Payment Method", 
+            "Location", 
+            "Flag_Location_inconsistent", 
+            "Transaction Date", 
+            "Flag_transaction_date_inconsistent"
+        }
+    ),
+
+    #"Changed Type3" = Table.TransformColumnTypes(
+        #"Reordered Columns3",{
+            {"Flag_Location_inconsistent", type logical}
+        }
+    ),
+
+    #"Added Custom5" = Table.AddColumn(
+        #"Changed Type3", 
+        "Flag_Payment_method_inconsistent", 
+        each 
+        if 
+            [Payment Method] <> "ERROR" 
+        then 0 
+        else 1
+    ),
+
+    #"Reordered Columns4" = Table.ReorderColumns(
+        #"Added Custom5",{
+            "Transaction ID", 
+            "Item", 
+            "Quantity_", 
+            "Price_per_unit", 
+            "Total_spent", 
+            "Payment Method", 
+            "Flag_Payment_method_inconsistent", 
+            "Location", 
+            "Flag_Location_inconsistent", 
+            "Transaction Date", 
+            "Flag_transaction_date_inconsistent"}
+    ),
+
+    #"Changed Type4" = Table.TransformColumnTypes(
+        #"Reordered Columns4",{
+            {"Flag_Payment_method_inconsistent", type logical}
+        }
+    ),
+
+    #"Added Custom6" = Table.AddColumn(
+        #"Changed Type4", 
+        "Flag_inconsistent_transaction", 
+        each 
+        let
+            //Check Price per unit
+            PriceValid =
+                if 
+                    (try Number.From([Price_per_unit]) otherwise null) <> null
+                then 1 
+                else 0,
+
+            //Check Total spent
+            TotalValid =
+                if 
+                    (try Number.From([Total_spent]) otherwise null) <> null
+                then 1 
+                else 0,
+
+            //Check quantity
+            QuantityValid =
+                if 
+                    (try Number.From([Quantity_]) otherwise null) <> null
+                then 1 
+                else 0,
+
+            //Sum valid check
+            ValidCount = PriceValid + TotalValid + QuantityValid
+        in
+        // 5. Return TRUE if ValidCount <= 1
+            if ValidCount <= 1 
+            then 1 
+            else 0
+    ),
+    #"Reordered Columns5" = Table.ReorderColumns(
+        #"Added Custom6",{
+            "Transaction ID", 
+            "Item", 
+            "Quantity_", 
+            "Price_per_unit", 
+            "Total_spent", 
+            "Payment Method", 
+            "Location", 
+            "Transaction Date", 
+            "Flag_Payment_method_inconsistent", 
+            "Flag_Location_inconsistent", 
+            "Flag_transaction_date_inconsistent", 
+            "Flag_inconsistent_transaction"}
+    ),
+
+    #"Changed Type5" = Table.TransformColumnTypes(
+        #"Reordered Columns5",{
+            {"Flag_inconsistent_transaction", type logical}
+        }
+    ),
+
+    #"Renamed Columns" = Table.RenameColumns(
+        #"Changed Type5",{
+            {"Flag_Payment_method_inconsistent", 
+            "Flag_inconsistent_Payment_method"}
+        }
+    )
+in
+    #"Renamed Columns"
