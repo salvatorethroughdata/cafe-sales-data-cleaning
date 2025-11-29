@@ -10,13 +10,13 @@ The goal was to convert messy transactional data into a structured and analyzabl
 
 ***Repository Structure**
 
--raw_data/dirty_cafe_sales.csv 			      ~ Original, uncleaned dataset
+-raw_data/dirty_cafe_sales.csv 			        ~ Original, uncleaned dataset
 
--cleaned_data/cleaned_cafe_sales.xlsx 		~ Final cleaned dataset
+-cleaned_data/cleaned_cafe_sales.xlsx 		  ~ Final cleaned dataset
 
--documentation/cleaning_steps.md 		      ~ Step-by-step explanation of all cleaning transformations
+-documentation/cleaning_steps.md 		        ~ Step-by-step explanation of all cleaning transformations
 
--documentation/cafe_sales_m.txt 		      ~ Power Query M code used for the transformations
+-documentation/cafe_sales_m.txt 		        ~ Power Query M code used for the transformations
 
 
 ***Tools Used**
